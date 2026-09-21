@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ciclo - Acompanhamento Menstrual</title>
+<meta name="theme-color" content="#e91e63">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/favicon.ico">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+<div class="app">
+
+  <header class="app-header">
+    <div class="app-title">
+      🌸 <span id="appTitleText">Ciclo</span>
+      <small id="appSubtitleText">Acompanhamento Menstrual</small>
+    </div>
+    <div class="header-actions">
+      <select id="langSelect" class="lang-select" aria-label="Idioma"></select>
+      <button id="themeToggleBtn" class="btn btn-icon btn-outline" type="button" title="Aparência">🌓</button>
+    </div>
+  </header>
+
+  <div id="alertContainer" class="no-print"></div>
+  <button id="appointmentBanner" class="appointment-banner no-print" type="button" hidden></button>
+
+  <div class="content-grid">
+    <!-- ===== COLUNA CALENDÁRIO ===== -->
+    <div>
+      <div class="card calendar-card">
+        <div class="calendar-nav">
+          <div class="nav-buttons">
+            <button id="prevMonthBtn" class="btn btn-icon btn-outline" type="button" aria-label="Mês anterior">◀</button>
+            <button id="todayBtn" class="btn btn-outline btn-sm" type="button">Hoje</button>
+          </div>
+          <div id="monthLabel" class="month-label"></div>
+          <div class="nav-buttons">
+            <button id="nextMonthBtn" class="btn btn-icon btn-outline" type="button" aria-label="Mês seguinte">▶</button>
+          </div>
+        </div>
+        <div id="calendarGrid" class="calendar-grid"></div>
+      </div>
+
+      <div class="mini-calendars no-print">
+        <div class="card mini-calendar">
+          <div id="miniTitle1" class="mini-title"></div>
+          <div id="miniGrid1" class="calendar-grid"></div>
+        </div>
+        <div class="card mini-calendar">
+          <div id="miniTitle2" class="mini-title"></div>
+          <div id="miniGrid2" class="calendar-grid"></div>
+        </div>
+      </div>
+
+      <div class="card no-print">
+        <div class="section-title" id="periodActionsTitle"></div>
+        <button id="periodToggleBtn" class="btn btn-primary" type="button" style="width:100%"></button>
+      </div>
+    </div>
+
+    <!-- ===== COLUNA LATERAL ===== -->
+    <div>
+      <div class="card">
+        <div id="selectedDateDisplay" class="selected-date-display"></div>
+        <div class="info-list">
+          <div class="info-row"><span class="label" id="lblCycleDay"></span><span id="cycleDay" class="value"></span></div>
+          <div class="info-row"><span class="label" id="lblFertility"></span><span id="fertilityStatus" class="value"></span></div>
+          <div class="info-row"><span class="label" id="lblNextOvulation"></span><span id="nextOvulation" class="value"></span></div>
+          <div class="info-row"><span class="label" id="lblNextPeriod"></span><span id="nextPeriod" class="value"></span></div>
+          <div class="info-row"><span class="label" id="lblConfidence"></span><span id="confidenceLevel" class="value"></span></div>
+        </div>
+      </div>
+
+      <div id="appointmentSection" class="card no-print">
+        <div class="section-title" id="appointmentsTitleText"></div>
+        <div id="appointmentCurrentWrap"></div>
+        <div id="appointmentTypesWrap" class="appointment-types"></div>
+      </div>
+
+      <div class="card symptoms-card no-print">
+        <div id="symptomDateInfo" class="section-title"></div>
+
+        <div id="flowSection" class="symptom-group" hidden>
+          <div class="symptom-label" id="lblFlow"></div>
+          <div class="symptom-buttons flow-buttons" data-symptom="flow">
+            <button class="btn flow-opt-1" type="button" data-level="1"></button>
+            <button class="btn flow-opt-2" type="button" data-level="2"></button>
+            <button class="btn flow-opt-3" type="button" data-level="3"></button>
+          </div>
+        </div>
+
+        <div class="symptom-group">
+          <div class="symptom-label" id="lblMood"></div>
+          <div class="symptom-buttons" data-symptom="mood">
+            <button class="btn" type="button" data-idx="0">😊</button>
+            <button class="btn" type="button" data-idx="1">😐</button>
+            <button class="btn" type="button" data-idx="2">😔</button>
+          </div>
+        </div>
+        <div class="symptom-group">
+          <div class="symptom-label" id="lblPhysical"></div>
+          <div class="symptom-buttons" data-symptom="physical">
+            <button class="btn" type="button" data-idx="0">🙂</button>
+            <button class="btn" type="button" data-idx="1">😣</button>
+            <button class="btn" type="button" data-idx="2">😖</button>
+          </div>
+        </div>
+        <div class="symptom-group">
+          <div class="symptom-label" id="lblEnergy"></div>
+          <div class="symptom-buttons" data-symptom="energy">
+            <button class="btn" type="button" data-idx="0">⚡</button>
+            <button class="btn" type="button" data-idx="1">🔋</button>
+            <button class="btn" type="button" data-idx="2">🪫</button>
+          </div>
+        </div>
+        <div class="symptom-group">
+          <div class="symptom-label" id="lblLibido"></div>
+          <div class="symptom-buttons" data-symptom="libido">
+            <button class="btn" type="button" data-idx="0">🔥</button>
+            <button class="btn" type="button" data-idx="1">❤️</button>
+            <button class="btn" type="button" data-idx="2">❄️</button>
+          </div>
+        </div>
+
+        <div class="symptom-group">
+          <div class="symptom-label" id="lblNotes"></div>
+          <textarea id="notesInput"></textarea>
+        </div>
+      </div>
+
+      <div class="card settings-card no-print">
+        <div class="section-title" id="settingsTitleText"></div>
+        <div class="settings-grid">
+          <div class="field">
+            <label id="lblCycleLength" for="cycleLengthInput"></label>
+            <input id="cycleLengthInput" type="number" min="15" max="90">
+          </div>
+          <div class="field">
+            <label id="lblPeriodLength" for="periodLengthInput"></label>
+            <input id="periodLengthInput" type="number" min="1" max="15">
+          </div>
+          <div class="field">
+            <label id="lblLutealPhase" for="lutealPhaseInput"></label>
+            <input id="lutealPhaseInput" type="number" min="5" max="25">
+          </div>
+        </div>
+        <label class="checkbox-field">
+          <input id="perimenopauseMode" type="checkbox">
+          <span id="lblPerimenopause"></span>
+        </label>
+        <div id="settingsStatus" class="settings-status"></div>
+      </div>
+
+      <div class="card no-print">
+        <div class="section-title" id="backupTitleText"></div>
+        <div class="backup-actions">
+          <button id="exportBtn" class="btn btn-outline" type="button"></button>
+          <label class="btn btn-outline" style="text-align:center;">
+            <span id="importLabelText"></span>
+            <input id="importFile" type="file" accept="application/json" style="display:none">
+          </label>
+          <button id="clearBtn" class="btn btn-danger" type="button"></button>
+        </div>
+        <div id="dataStatus" class="data-status"></div>
+      </div>
+
+      <div class="card no-print" id="reportBtnWrap">
+        <div class="section-title" id="reportTitleText"></div>
+        <button id="generateReportBtn" class="btn btn-secondary" type="button" style="width:100%"></button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Conteúdo gerado apenas para impressão/PDF -->
+  <div id="reportContent" class="report-only card"></div>
+
+</div>
+
+<div id="updateBanner" class="update-banner" hidden>
+  <span id="updateBannerText"></span>
+  <button id="updateNowBtn" class="btn btn-primary" type="button"></button>
+</div>
+
+<script src="js/i18n.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
