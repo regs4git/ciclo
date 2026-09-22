@@ -156,7 +156,7 @@ const I18N = {
     saveName: 'Guardar',
     skipName: 'Saltar',
     reportSubtitlePersonal: 'Relatório de {name}',
-    appFooter: 'Piquinho',
+    appFooter: 'Piquinho Software — Crafted with altitude. Built with joy',
     weekdays: ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'],
     months: ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro']
   },
