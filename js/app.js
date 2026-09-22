@@ -150,7 +150,11 @@ function getCycleDiffs() {
 }
 
 function getCycleConfidence() {
+    // CORRIGIDO: em modo perimenopausa, mostrava sempre "padrão variável"
+    // mesmo com zero dados registados. Agora só usa essa mensagem quando
+    // já há dados suficientes para ela fazer sentido.
     if (state.settings.perimenopauseMode) {
+        if (state.periods.length < 2) return { level: 'low', emoji: '🟡', desc: t('confidenceLowFewData') };
         return { level: 'perimenopause', emoji: '🔄', desc: t('confidencePerimenopause') };
     }
     if (state.periods.length < 3) return { level: 'low', emoji: '🟡', desc: t('confidenceLowFewData') };
@@ -516,6 +520,12 @@ function selectDay(dateStr) {
 }
 
 /* ================= RENDERIZAÇÃO ================= */
+// Em ecrãs largos (PC, tablet, telemóvel em landscape) há espaço para
+// mostrar os 4 emoji de sintomas em vez de só 2. matchMedia dispara render()
+// apenas quando se cruza o limiar (não a cada pixel de redimensionamento).
+const WIDE_SCREEN_MQ = window.matchMedia('(min-width: 600px)');
+function maxDayEmojis() { return WIDE_SCREEN_MQ.matches ? 4 : 2; }
+
 function getPredictedPhaseClass(dateStr) {
     const fi = getFertilityInfo(dateStr);
     if (fi.phase === 'fertility-high') return 'phase-fertility-high';
@@ -532,9 +542,10 @@ function dayEmojis(dateStr) {
         mood: ['😊', '😐', '😔'], energy: ['⚡', '🔋', '🪫'],
         physical: ['🙂', '😣', '😖'], libido: ['🔥', '❤️', '❄️']
     };
+    const max = maxDayEmojis();
     const list = [];
     SYMPTOM_KEYS.forEach(key => {
-        if (s[key] !== undefined && list.length < 2) list.push(EMOJI_MAP[key][s[key]] || '');
+        if (s[key] !== undefined && list.length < max) list.push(EMOJI_MAP[key][s[key]] || '');
     });
     return list.join('');
 }
@@ -544,30 +555,39 @@ function buildDayCell(dateStr, dayNum, { selectable, showAppointment }) {
     const isSelected = dateStr === state.selectedDate;
     const isFuture = isFutureDate(dateStr);
     const isPeriod = isPeriodDay(dateStr);
+    let isOvulationDay = false;
 
     let cls = 'day';
     if (isPeriod) {
         cls += ` phase-period flow-${getFlowLevel(dateStr)}`;
     } else if (isFuture) {
-        // Prioridade: período previsto > outras fases (é a informação mais
-        // relevante de assinalar; antes desta correção não havia NENHUMA
-        // marcação de período previsto no calendário).
+        // Prioridade: período previsto > outras fases.
         if (isPredictedPeriodDay(dateStr)) {
             cls += ' predicted phase-period-predicted';
         } else {
             const phaseClass = getPredictedPhaseClass(dateStr);
-            if (phaseClass) cls += ' predicted ' + phaseClass;
+            if (phaseClass) {
+                cls += ' predicted ' + phaseClass;
+                isOvulationDay = phaseClass === 'phase-ovulation';
+            }
         }
     }
     if (isSelected) cls += ' selected';
     if (isToday) cls += ' today';
 
-    const emojis = !isPeriod ? dayEmojis(dateStr) : '';
+    // CORRIGIDO: os emoji de sintomas deixaram de aparecer nos dias de
+    // período — agora aparecem sempre que há sintomas registados, também
+    // sobre a cor de fluxo (cólicas/dor são precisamente mais comuns nesses
+    // dias e a informação não devia desaparecer).
+    const emojis = dayEmojis(dateStr);
     const appt = showAppointment ? state.appointments.find(a => a.date === dateStr) : null;
     const apptIcon = appt ? `<span class="day-appointment-icon">${APPOINTMENT_ICONS[appt.type]}</span>` : '';
+    // Marcador extra no dia de ovulação prevista — o contorno tracejado
+    // sozinho era pouco visível num ecrã pequeno.
+    const ovulationIcon = isOvulationDay ? `<span class="day-ovulation-icon">🥚</span>` : '';
     const clickAttr = selectable ? ` data-date="${dateStr}"` : '';
 
-    return `<div class="${cls}"${clickAttr}>${dayNum}${apptIcon}${emojis ? `<span class="day-emojis">${emojis}</span>` : ''}${isToday && !isSelected ? '<span class="day-indicator"></span>' : ''}</div>`;
+    return `<div class="${cls}"${clickAttr}>${dayNum}${apptIcon}${ovulationIcon}${emojis ? `<span class="day-emojis">${emojis}</span>` : ''}${isToday && !isSelected ? '<span class="day-indicator"></span>' : ''}</div>`;
 }
 
 function renderMainCalendar() {
@@ -725,6 +745,7 @@ function renderAppointmentBanner() {
 function updatePeriodToggleButton() {
     const btn = document.getElementById('periodToggleBtn');
     const dateStr = state.selectedDate;
+    btn.style.width = '100%';
     if (!dateStr || isFutureDate(dateStr)) {
         btn.textContent = t('markPeriodStart');
         btn.className = 'btn btn-primary';
@@ -732,10 +753,26 @@ function updatePeriodToggleButton() {
         return;
     }
     const exists = state.periods.some(p => p.start === dateStr);
-    btn.textContent = exists ? t('removePeriodStart') : t('markPeriodStart');
-    btn.className = exists ? 'btn btn-danger' : 'btn btn-primary';
+    if (exists) {
+        btn.textContent = t('removePeriodStart');
+        btn.className = 'btn btn-danger';
+        btn.disabled = false;
+        return;
+    }
+    // CORRIGIDO: se este dia estende um período existente (é o dia a seguir
+    // ao fim de um período já registado), "Marcar início" criava um SEGUNDO
+    // período separado em vez de continuar o mesmo. Agora fica desativado e
+    // a indicar para usar os botões de intensidade de fluxo, que são o
+    // mecanismo certo para continuar um período.
+    if (getExtendablePeriod(dateStr)) {
+        btn.textContent = t('useFlowToExtend');
+        btn.className = 'btn btn-outline';
+        btn.disabled = true;
+        return;
+    }
+    btn.textContent = t('markPeriodStart');
+    btn.className = 'btn btn-primary';
     btn.disabled = false;
-    btn.style.width = '100%';
 }
 
 function updateSettingsStatus() {
@@ -1009,6 +1046,10 @@ function setupEvents() {
     });
 
     setupSwipe();
+
+    // Recalcula quantos emoji cabem quando o ecrã cruza o limiar largo/estreito
+    // (ex. rodar o telemóvel para landscape), sem precisar de recarregar.
+    WIDE_SCREEN_MQ.addEventListener('change', render);
 }
 
 /* ================= SERVICE WORKER / PWA ================= */
