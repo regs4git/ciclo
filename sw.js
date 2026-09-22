@@ -2,7 +2,7 @@
 // IMPORTANTE: ao publicar uma nova versão da app, muda SEMPRE este número.
 // É o que despoleta a limpeza de cache antigo e o aviso de "nova versão"
 // na interface — nunca apaga localStorage, apenas os ficheiros da app.
-const CACHE_VERSION = 'v1';
+const CACHE_VERSION = 'v2';
 const CACHE_NAME = `ciclo-cache-${CACHE_VERSION}`;
 
 // Ficheiros essenciais para a app funcionar offline.
@@ -24,11 +24,21 @@ const PRECACHE_URLS = [
 ];
 
 self.addEventListener('install', (event) => {
+  // cache.addAll() falha por completo se UM SÓ ficheiro der erro (ex. 404
+  // temporário durante a propagação do GitHub Pages), o que pode levar a
+  // tentativas de instalação repetidas e a comportamento imprevisível do
+  // aviso de "nova versão". Aqui cada ficheiro é pedido individualmente,
+  // para uma falha isolada não arrastar a instalação toda.
   event.waitUntil(
-    caches.open(CACHE_NAME)
-      .then((cache) => cache.addAll(PRECACHE_URLS))
-      // Não ativa imediatamente: só quando o utilizador confirmar no
-      // banner "nova versão disponível" (skipWaiting via mensagem).
+    caches.open(CACHE_NAME).then((cache) =>
+      Promise.all(
+        PRECACHE_URLS.map((url) =>
+          fetch(url).then((res) => (res.ok ? cache.put(url, res) : null)).catch(() => null)
+        )
+      )
+    )
+    // Não ativa imediatamente: só quando o utilizador confirmar no
+    // banner "nova versão disponível" (skipWaiting via mensagem).
   );
 });
 
