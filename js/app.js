@@ -1057,6 +1057,9 @@ function setupEvents() {
 
     document.getElementById('onboardingSaveBtn').addEventListener('click', () => completeOnboarding(true));
     document.getElementById('onboardingSkipBtn').addEventListener('click', () => completeOnboarding(false));
+    document.getElementById('onboardingNameInput').addEventListener('keydown', (e) => {
+        if (e.key === 'Enter') completeOnboarding(true);
+    });
 
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') goToToday();

@@ -68,6 +68,16 @@
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
+/* CORRIGIDO: várias regras mais abaixo (.modal-overlay, .update-banner,
+   .appointment-banner) definem "display: flex" de forma incondicional.
+   Como uma regra do NOSSO stylesheet tem sempre prioridade sobre a regra
+   por omissão do browser para o atributo hidden ([hidden]{display:none}),
+   isso anulava o "hidden" — os popups/onboarding/avisos apareciam mas
+   nunca mais desapareciam, mesmo com hidden=true definido corretamente
+   pelo JavaScript. Esta regra única, com !important, garante que "hidden"
+   ganha sempre a qualquer outra regra de display, atual ou futura.  */
+[hidden] { display: none !important; }
+
 html {
     font-size: clamp(14px, 3.6vw, 16px);
     -webkit-tap-highlight-color: transparent;
@@ -299,7 +309,6 @@ body {
     font-size: 0.85rem;
 }
 .update-banner .btn-primary { min-height: 36px; padding: 6px 14px; }
-
 /* ===== SIDEBAR: INFO ===== */
 .info-list { display: grid; gap: 8px; font-size: 0.9rem; margin-bottom: 12px; }
 .info-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
