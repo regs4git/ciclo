@@ -16,7 +16,8 @@ let state = {
         lutealPhase: 14,
         perimenopauseMode: false,
         lang: 'pt',
-        theme: 'auto'
+        theme: 'auto',
+        userName: ''
     }
 };
 
@@ -439,7 +440,8 @@ function exportData() {
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `ciclo_backup_${formatDate(new Date())}.json`;
+    const namePart = state.settings.userName ? `_${state.settings.userName.trim().replace(/[^\p{L}\p{N}]+/gu, '_')}` : '';
+    a.download = `ciclo_backup${namePart}_${formatDate(new Date())}.json`;
     a.click();
     URL.revokeObjectURL(url);
 }
@@ -478,9 +480,11 @@ function clearAllData() {
             state.symptoms = {};
             state.flow = {};
             state.appointments = [];
-            state.settings = { ...state.settings, cycleLength: 28, periodLength: 5, lutealPhase: 14, perimenopauseMode: false };
+            state.settings = { ...state.settings, cycleLength: 28, periodLength: 5, lutealPhase: 14, perimenopauseMode: false, userName: '' };
+            localStorage.removeItem(ONBOARDED_KEY); // volta a perguntar o nome
             syncSettingsInputs();
             render();
+            showOnboarding();
         }
     }
 }
@@ -746,6 +750,7 @@ function updatePeriodToggleButton() {
     const btn = document.getElementById('periodToggleBtn');
     const dateStr = state.selectedDate;
     btn.style.width = '100%';
+    btn.title = '';
     if (!dateStr || isFutureDate(dateStr)) {
         btn.textContent = t('markPeriodStart');
         btn.className = 'btn btn-primary';
@@ -759,15 +764,14 @@ function updatePeriodToggleButton() {
         btn.disabled = false;
         return;
     }
-    // CORRIGIDO: se este dia estende um período existente (é o dia a seguir
-    // ao fim de um período já registado), "Marcar início" criava um SEGUNDO
-    // período separado em vez de continuar o mesmo. Agora fica desativado e
-    // a indicar para usar os botões de intensidade de fluxo, que são o
-    // mecanismo certo para continuar um período.
+    // CORRIGIDO: fica apenas desativado (sem trocar o texto do botão por uma
+    // chave de tradução) — a indicação de "usa os botões de fluxo" vai só
+    // no atributo title (tooltip), não como texto permanente do botão.
     if (getExtendablePeriod(dateStr)) {
-        btn.textContent = t('useFlowToExtend');
+        btn.textContent = t('markPeriodStart');
         btn.className = 'btn btn-outline';
         btn.disabled = true;
+        btn.title = t('useFlowToExtend');
         return;
     }
     btn.textContent = t('markPeriodStart');
@@ -806,7 +810,7 @@ function render() {
 function applyStaticTexts() {
     document.documentElement.lang = state.settings.lang;
     document.getElementById('appTitleText').textContent = t('appTitle');
-    document.getElementById('appSubtitleText').textContent = t('appSubtitle');
+    document.getElementById('appSubtitleText').textContent = state.settings.userName || t('appSubtitle');
     document.getElementById('todayBtn').textContent = t('today');
     document.getElementById('prevMonthBtn').setAttribute('aria-label', t('prevMonth'));
     document.getElementById('nextMonthBtn').setAttribute('aria-label', t('nextMonth'));
@@ -847,6 +851,13 @@ function applyStaticTexts() {
 
     document.getElementById('updateBannerText').textContent = t('updateAvailable');
     document.getElementById('updateNowBtn').textContent = t('updateNow');
+
+    document.getElementById('appFooterText').textContent = t('appFooter');
+    document.getElementById('onboardingTitleText').textContent = t('onboardingTitle');
+    document.getElementById('onboardingPromptText').textContent = t('onboardingPrompt');
+    document.getElementById('onboardingNameInput').placeholder = t('namePlaceholder');
+    document.getElementById('onboardingSaveBtn').textContent = t('saveName');
+    document.getElementById('onboardingSkipBtn').textContent = t('skipName');
 
     const langSelect = document.getElementById('langSelect');
     langSelect.innerHTML = Object.keys(LANGS).map(code =>
@@ -896,7 +907,7 @@ function generateReport() {
     const conf = getCycleConfidence();
 
     let html = `
-        <h2>${t('appTitle')} — ${t('reportSubtitleGeneral')}</h2>
+        <h2>${t('appTitle')} — ${state.settings.userName ? t('reportSubtitlePersonal', { name: state.settings.userName }) : t('reportSubtitleGeneral')}</h2>
         <p>${t('reportGeneratedAt', { date: new Date().toLocaleDateString() })}</p>
         <h3>${t('reportSummary')}</h3>
         <ul>
@@ -1041,6 +1052,12 @@ function setupEvents() {
     document.getElementById('clearBtn').addEventListener('click', clearAllData);
     document.getElementById('generateReportBtn').addEventListener('click', generateReport);
 
+    document.getElementById('phaseInfoBtn').addEventListener('click', openPhasePopup);
+    document.getElementById('phasePopupClose').addEventListener('click', closePhasePopup);
+
+    document.getElementById('onboardingSaveBtn').addEventListener('click', () => completeOnboarding(true));
+    document.getElementById('onboardingSkipBtn').addEventListener('click', () => completeOnboarding(false));
+
     document.addEventListener('keydown', (e) => {
         if (e.key === 'Escape') goToToday();
     });
@@ -1052,28 +1069,99 @@ function setupEvents() {
     WIDE_SCREEN_MQ.addEventListener('change', render);
 }
 
-/* ================= SERVICE WORKER / PWA ================= */
+/* ================= POPUP DE FASE DO CICLO ================= */
+// Mapeia o dia selecionado para uma das 7 fases descritas — reaproveita o
+// mesmo motor de cálculo que já colore o calendário, por isso está sempre
+// coerente com o que se vê nos dias reais/previstos.
+function getPhaseKey(dateStr) {
+    if (isPeriodDay(dateStr)) return 'menstrual';
+    const fi = getFertilityInfo(dateStr);
+    return fi.phase; // 'follicular' | 'fertility-moderate' | 'fertility-high' | 'ovulation' | 'luteal' | 'pms' | 'unknown'
+}
+const PHASE_I18N_SUFFIX = {
+    menstrual: 'Menstrual', follicular: 'Follicular', 'fertility-moderate': 'FertilityModerate',
+    'fertility-high': 'FertilityHigh', ovulation: 'Ovulation', luteal: 'Luteal', pms: 'Pms', unknown: 'Unknown'
+};
+
+function openPhasePopup() {
+    const dateStr = state.selectedDate;
+    if (!dateStr) return;
+    const suffix = PHASE_I18N_SUFFIX[getPhaseKey(dateStr)] || 'Unknown';
+    document.getElementById('phasePopupTitle').textContent = t('phaseTitle' + suffix);
+    document.getElementById('phasePopupText').textContent = t('phaseText' + suffix);
+    document.getElementById('phasePopupFootnote').textContent = t('footnoteGeneral');
+    const perimenopauseP = document.getElementById('phasePopupPerimenopause');
+    if (state.settings.perimenopauseMode) {
+        perimenopauseP.textContent = t('footnotePerimenopause');
+        perimenopauseP.hidden = false;
+    } else {
+        perimenopauseP.hidden = true;
+    }
+    document.getElementById('phasePopup').hidden = false;
+}
+function closePhasePopup() {
+    document.getElementById('phasePopup').hidden = true;
+}
+
+/* ================= ONBOARDING (NOME OPCIONAL) ================= */
+const ONBOARDED_KEY = 'ciclo_onboarded';
+function shouldShowOnboarding() { return localStorage.getItem(ONBOARDED_KEY) !== 'true'; }
+function markOnboarded() { localStorage.setItem(ONBOARDED_KEY, 'true'); }
+
+function showOnboarding() {
+    document.getElementById('onboardingNameInput').value = state.settings.userName || '';
+    document.getElementById('onboardingModal').hidden = false;
+}
+function completeOnboarding(save) {
+    if (save) {
+        const name = document.getElementById('onboardingNameInput').value.trim();
+        state.settings.userName = name;
+        applyStaticTexts();
+        saveState();
+    }
+    markOnboarded();
+    document.getElementById('onboardingModal').hidden = true;
+}
+
+
+// BUG CORRIGIDO (causa raiz, não só um sintoma): logo na PRIMEIRA instalação
+// (sem nenhuma versão anterior a substituir — o caso normal em incógnito),
+// o service worker ativa-se automaticamente e chama clients.claim(), o que
+// dispara 'controllerchange' mesmo sem existir de facto uma atualização.
+// "navigator.serviceWorker.controller" não é fiável neste instante exato
+// para distinguir "primeira instalação" de "atualização real". Em vez
+// disso guardamos nós próprios, no localStorage, se esta app já esteve
+// alguma vez sob controlo de um service worker — só a partir daí é que um
+// controllerchange ou um worker à espera contam como uma atualização real.
+const SW_SEEN_KEY = 'ciclo_sw_seen';
+
 function setupServiceWorker() {
     if (!('serviceWorker' in navigator)) return;
     let refreshing = false;
+
     navigator.serviceWorker.addEventListener('controllerchange', () => {
         if (refreshing) return;
-        refreshing = true;
-        window.location.reload();
+        if (localStorage.getItem(SW_SEEN_KEY) === 'true') {
+            refreshing = true;
+            window.location.reload();
+        } else {
+            localStorage.setItem(SW_SEEN_KEY, 'true');
+        }
     });
 
     navigator.serviceWorker.register('sw.js').then((reg) => {
-        // BUG CORRIGIDO: faltava exigir "navigator.serviceWorker.controller"
-        // aqui — sem essa condição, era possível o aviso de "nova versão"
-        // aparecer mesmo numa primeira instalação (quando ainda não existe
-        // nenhuma versão anterior a substituir).
-        if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg);
+        if (navigator.serviceWorker.controller) localStorage.setItem(SW_SEEN_KEY, 'true');
+        const alreadySeen = () => localStorage.getItem(SW_SEEN_KEY) === 'true';
+
+        if (reg.waiting && alreadySeen()) showUpdateBanner(reg);
+
         reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             newWorker.addEventListener('statechange', () => {
-                if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                if (newWorker.state === 'installed' && alreadySeen()) {
                     showUpdateBanner(reg);
                 }
+                if (newWorker.state === 'activated') localStorage.setItem(SW_SEEN_KEY, 'true');
             });
         });
     }).catch((err) => console.warn('Falha ao registar service worker:', err));
@@ -1097,4 +1185,6 @@ document.addEventListener('DOMContentLoaded', () => {
     setupEvents();
     render();
     setupServiceWorker();
+    // Primeira utilização (ou logo a seguir a apagar todos os dados).
+    if (shouldShowOnboarding()) showOnboarding();
 });

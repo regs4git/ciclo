@@ -44,3 +44,8 @@ Não basta abrir `index.html` a fazer duplo-clique (o service worker exige `http
 python3 -m http.server 8000
 ```
 depois abre `http://localhost:8000` no browser.
+
+## Histórico de versões (sw.js CACHE_VERSION)
+- **v1** — primeira versão publicada.
+- **v2** — correções: traduções (bug do `window.state`), fluxo/período incremental em vez de bloco fixo, ovulação nunca marcada, período previsto ausente no calendário futuro, janela de médias (6/4 ciclos), modo escuro ilegível em alertas/definições.
+- **v3** — botão "Marcar início" desativado (com *tooltip*) em dias que estendem um período existente; confiança em perimenopausa sem dados; marcador extra no dia de ovulação; emojis de sintomas também em dias de período; contagem de emojis responsiva (2 em ecrã estreito, 4 em ecrã largo); popup ℹ️ com referência de sintomas por fase (7 fases); onboarding opcional do nome (primeira utilização / depois de apagar dados); rodapé; correção definitiva do aviso falso de "nova versão" (incluindo em modo incógnito).

@@ -2,7 +2,7 @@
 // IMPORTANTE: ao publicar uma nova versão da app, muda SEMPRE este número.
 // É o que despoleta a limpeza de cache antigo e o aviso de "nova versão"
 // na interface — nunca apaga localStorage, apenas os ficheiros da app.
-const CACHE_VERSION = 'v2';
+const CACHE_VERSION = 'v3';
 const CACHE_NAME = `ciclo-cache-${CACHE_VERSION}`;
 
 // Ficheiros essenciais para a app funcionar offline.

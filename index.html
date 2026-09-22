@@ -67,7 +67,7 @@
         <div id="selectedDateDisplay" class="selected-date-display"></div>
         <div class="info-list">
           <div class="info-row"><span class="label" id="lblCycleDay"></span><span id="cycleDay" class="value"></span></div>
-          <div class="info-row"><span class="label" id="lblFertility"></span><span id="fertilityStatus" class="value"></span></div>
+          <div class="info-row"><span class="label" id="lblFertility"></span><span class="value-with-info"><span id="fertilityStatus" class="value"></span><button id="phaseInfoBtn" class="btn btn-icon btn-outline btn-info-sm" type="button" aria-label="Info">ℹ️</button></span></div>
           <div class="info-row"><span class="label" id="lblNextOvulation"></span><span id="nextOvulation" class="value"></span></div>
           <div class="info-row"><span class="label" id="lblNextPeriod"></span><span id="nextPeriod" class="value"></span></div>
           <div class="info-row"><span class="label" id="lblConfidence"></span><span id="confidenceLevel" class="value"></span></div>
@@ -177,6 +177,30 @@
   <!-- Conteúdo gerado apenas para impressão/PDF -->
   <div id="reportContent" class="report-only card"></div>
 
+  <footer class="app-footer no-print" id="appFooterText"></footer>
+
+</div>
+
+<div id="phasePopup" class="modal-overlay no-print" hidden>
+  <div class="modal-box">
+    <button id="phasePopupClose" class="btn btn-icon btn-outline modal-close" type="button" aria-label="Fechar">✕</button>
+    <h3 id="phasePopupTitle"></h3>
+    <p id="phasePopupText"></p>
+    <p id="phasePopupFootnote" class="modal-footnote"></p>
+    <p id="phasePopupPerimenopause" class="modal-footnote" hidden></p>
+  </div>
+</div>
+
+<div id="onboardingModal" class="modal-overlay no-print" hidden>
+  <div class="modal-box">
+    <h3 id="onboardingTitleText"></h3>
+    <p id="onboardingPromptText"></p>
+    <input id="onboardingNameInput" type="text" autocomplete="off">
+    <div class="modal-actions">
+      <button id="onboardingSkipBtn" class="btn btn-outline" type="button"></button>
+      <button id="onboardingSaveBtn" class="btn btn-primary" type="button"></button>
+    </div>
+  </div>
 </div>
 
 <div id="updateBanner" class="update-banner" hidden>
