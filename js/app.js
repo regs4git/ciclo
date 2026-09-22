@@ -45,6 +45,24 @@ function loadState() {
     } catch (e) {
         console.warn('Erro ao carregar dados:', e);
     }
+    normalizeFlow();
+}
+
+// Garante que TODOS os dias de um período têm uma intensidade de fluxo
+// explícita (médio, por omissão). Isto é o que permite que o botão de
+// intensidade apareça já "ativo" e que um único toque o desligue (e encolha
+// o período) — sem isto, dias de períodos criados antes desta correção
+// ficavam sem registo explícito e não era possível marcar "sem fluxo".
+function normalizeFlow() {
+    state.periods.forEach((p) => {
+        let d = parseDate(p.start);
+        const end = parseDate(p.end);
+        while (d <= end) {
+            const ds = formatDate(d);
+            if (state.flow[ds] === undefined) state.flow[ds] = 2;
+            d = addDays(d, 1);
+        }
+    });
 }
 
 function saveState() {
@@ -90,10 +108,19 @@ function diffRange() {
     return state.settings.perimenopauseMode ? [15, 90] : [18, 60];
 }
 
+// Quantos ciclos recentes entram na média (em vez de usar TODO o
+// histórico para sempre). 6 ciclos (~6 meses) dá um equilíbrio razoável
+// entre estabilidade e capacidade de reagir a uma mudança real; em modo
+// perimenopausa usamos uma janela mais curta (4), porque aí a mudança de
+// padrão é precisamente o que interessa apanhar mais depressa.
+function rollingWindowSize() {
+    return state.settings.perimenopauseMode ? 4 : 6;
+}
+
 function getAverageCycleLength() {
     if (state.periods.length < 2) return state.settings.cycleLength;
     const [lo, hi] = diffRange();
-    const sorted = [...state.periods].sort((a, b) => a.start.localeCompare(b.start));
+    const sorted = [...state.periods].sort((a, b) => a.start.localeCompare(b.start)).slice(-(rollingWindowSize() + 1));
     let total = 0, count = 0;
     for (let i = 1; i < sorted.length; i++) {
         const diff = Math.round((parseDate(sorted[i].start) - parseDate(sorted[i - 1].start)) / 86400000);
@@ -102,9 +129,18 @@ function getAverageCycleLength() {
     return count === 0 ? state.settings.cycleLength : Math.round(total / count);
 }
 
+// Duração média do período (dias seguidos com fluxo registado), também
+// limitada à mesma janela recente.
+function getAveragePeriodLength() {
+    if (state.periods.length === 0) return state.settings.periodLength;
+    const recent = [...state.periods].sort((a, b) => a.start.localeCompare(b.start)).slice(-rollingWindowSize());
+    const total = recent.reduce((sum, p) => sum + (Math.round((parseDate(p.end) - parseDate(p.start)) / 86400000) + 1), 0);
+    return Math.max(1, Math.round(total / recent.length));
+}
+
 function getCycleDiffs() {
     const [lo, hi] = diffRange();
-    const sorted = [...state.periods].sort((a, b) => a.start.localeCompare(b.start));
+    const sorted = [...state.periods].sort((a, b) => a.start.localeCompare(b.start)).slice(-(rollingWindowSize() + 1));
     const diffs = [];
     for (let i = 1; i < sorted.length; i++) {
         const diff = Math.round((parseDate(sorted[i].start) - parseDate(sorted[i - 1].start)) / 86400000);
@@ -179,17 +215,21 @@ function getNextPeriodDisplay(fromDate) {
 }
 
 function getFertilityInfo(dateStr) {
-    const luteal = state.settings.lutealPhase;
     const ovDate = getNextOvulation(dateStr);
     if (!ovDate) return { phase: 'unknown', label: t('noData') };
     const ov = parseDate(ovDate);
     const current = parseDate(dateStr);
     const diff = Math.round((current - ov) / 86400000);
-    if (diff >= -5 && diff <= 1) {
-        if (diff >= -2 && diff <= 0) return { phase: 'fertility-high', label: t('fertilityHigh') };
-        return { phase: 'fertility-moderate', label: t('fertilityModerate') };
-    }
+
+    // BUG CORRIGIDO: a verificação "diff === 0" (dia exato da ovulação)
+    // estava DEPOIS do bloco "-5..1", que já capturava diff===0 e o
+    // classificava sempre como "fertilidade elevada" — o dia da ovulação
+    // nunca era distinguido no calendário nem na ficha lateral. Agora o
+    // dia exato é verificado primeiro.
     if (diff === 0) return { phase: 'ovulation', label: t('ovulation') };
+    if (diff >= -2 && diff <= -1) return { phase: 'fertility-high', label: t('fertilityHigh') };
+    if ((diff >= -5 && diff <= -3) || diff === 1) return { phase: 'fertility-moderate', label: t('fertilityModerate') };
+
     const nextPeriod = getNextPeriod(dateStr);
     if (nextPeriod) {
         const daysUntil = Math.round((parseDate(nextPeriod) - current) / 86400000);
@@ -198,6 +238,31 @@ function getFertilityInfo(dateStr) {
     if (diff < -5) return { phase: 'follicular', label: t('follicular') };
     if (diff > 1) return { phase: 'luteal', label: t('luteal') };
     return { phase: 'unknown', label: t('unknown') };
+}
+
+// Gera as janelas de período PREVISTAS (ainda não reais) para os próximos
+// meses, a partir do último período real registado — é isto que faltava
+// para os dias futuros de período aparecerem assinalados no calendário.
+function getPredictedPeriods() {
+    if (state.periods.length === 0) return [];
+    const sorted = [...state.periods].sort((a, b) => a.start.localeCompare(b.start));
+    const lastStart = parseDate(sorted[sorted.length - 1].start);
+    const cycleLen = getAverageCycleLength();
+    const periodLen = getAveragePeriodLength();
+    const limit = addDays(new Date(), (FUTURE_MONTH_LIMIT + 1) * 31);
+
+    const results = [];
+    let next = addDays(lastStart, cycleLen);
+    while (next <= limit) {
+        results.push({ start: formatDate(next), end: formatDate(addDays(next, periodLen - 1)) });
+        next = addDays(next, cycleLen);
+    }
+    return results;
+}
+
+function isPredictedPeriodDay(dateStr) {
+    if (!isFutureDate(dateStr)) return false;
+    return getPredictedPeriods().some(p => dateStr >= p.start && dateStr <= p.end);
 }
 
 function isPeriodDay(dateStr) {
@@ -218,6 +283,11 @@ function getCycleDay(dateStr) {
 }
 
 /* ================= INTERAÇÕES: PERÍODO / FLUXO ================= */
+// O período já NÃO nasce com uma duração fixa (settings.periodLength) —
+// nasce com 1 dia. É o registo diário de intensidade (setFlow) que o vai
+// estendendo dia a dia, exatamente enquanto houver fluxo real. Isto resolve
+// o problema de um período "de 5 dias" ser criado de repente mesmo que só
+// tenha havido sangramento em 1, 2 ou 3 desses dias.
 function togglePeriod() {
     const dateStr = state.selectedDate;
     if (!dateStr) return;
@@ -226,6 +296,10 @@ function togglePeriod() {
     const existingIdx = state.periods.findIndex(p => p.start === dateStr);
     if (existingIdx >= 0) {
         if (confirm(t('confirmRemovePeriod', { date: dateStr }))) {
+            const period = state.periods[existingIdx];
+            let d = parseDate(period.start);
+            const end = parseDate(period.end);
+            while (d <= end) { delete state.flow[formatDate(d)]; d = addDays(d, 1); }
             state.periods.splice(existingIdx, 1);
             render();
         }
@@ -237,33 +311,40 @@ function togglePeriod() {
             return;
         }
     }
-    const periodLen = state.settings.periodLength;
-    const startDate = parseDate(dateStr);
-    const endStr = formatDate(addDays(startDate, periodLen - 1));
-    for (const p of state.periods) {
-        if (dateStr <= p.end && endStr >= p.start) {
-            alert(t('periodOverlapNew'));
-            return;
-        }
-    }
-    state.periods.push({ start: dateStr, end: endStr });
+    state.periods.push({ start: dateStr, end: dateStr });
     state.periods.sort((a, b) => a.start.localeCompare(b.start));
+    state.flow[dateStr] = 2; // médio por omissão; ajustável logo a seguir
     render();
 }
 
-// Alterar/desativar a intensidade do fluxo num dia. Desativar no ÚLTIMO dia
-// de um período encolhe automaticamente esse período (ou remove-o, se
-// ficasse com 0 dias) — evita um estado "sem fluxo" ambíguo a meio do
-// intervalo, que entraria em conflito com a cor de fase do calendário.
+// Um dia "estende" um período existente quando é exatamente o dia seguinte
+// ao fim desse período — é assim que o período cresce dia a dia com o
+// registo real de fluxo, em vez de um bloco pré-atribuído.
+function getExtendablePeriod(dateStr) {
+    return state.periods.find(p => formatDate(addDays(parseDate(p.end), 1)) === dateStr) || null;
+}
+
+// Regista/altera a intensidade do fluxo num dia. Clicar na intensidade já
+// ativa DESLIGA-a (= "sem fluxo" nesse dia): se for o último dia do
+// período, encolhe-o (ou remove-o, se ficasse vazio). Em dias intermédios
+// não se permite desligar, para não deixar um buraco ambíguo a meio de um
+// período — nesse caso o registo diário nunca deveria ter chegado lá com
+// fluxo a zero; corrige-se encolhendo a partir do fim.
 function setFlow(level) {
     const dateStr = state.selectedDate;
     if (!dateStr || isFutureDate(dateStr)) { alert(t('futureSymptomBlocked')); return; }
-    if (!isPeriodDay(dateStr)) return;
-    const period = getPeriodFor(dateStr);
-    const current = state.flow[dateStr];
 
+    let period = getPeriodFor(dateStr);
+    if (!period) {
+        const ext = getExtendablePeriod(dateStr);
+        if (!ext) return; // este dia não pertence nem estende nenhum período
+        ext.end = dateStr;
+        period = ext;
+    }
+
+    const current = state.flow[dateStr];
     if (current === level) {
-        if (period && dateStr === period.end) {
+        if (dateStr === period.end) {
             if (period.start === period.end) {
                 state.periods = state.periods.filter(p => p !== period);
             } else {
@@ -271,8 +352,6 @@ function setFlow(level) {
             }
             delete state.flow[dateStr];
         }
-        // Em dias intermédios do período não se permite "desligar": ficaria
-        // um buraco ambíguo dentro do intervalo. Basta trocar de intensidade.
     } else {
         state.flow[dateStr] = level;
     }
@@ -375,6 +454,7 @@ function importData(event) {
                 state.flow = data.flow || {};
                 state.appointments = data.appointments || [];
                 if (data.settings) state.settings = { ...state.settings, ...data.settings };
+                normalizeFlow();
                 render();
                 syncSettingsInputs();
                 alert(t('importSuccess'));
@@ -469,8 +549,15 @@ function buildDayCell(dateStr, dayNum, { selectable, showAppointment }) {
     if (isPeriod) {
         cls += ` phase-period flow-${getFlowLevel(dateStr)}`;
     } else if (isFuture) {
-        const phaseClass = getPredictedPhaseClass(dateStr);
-        if (phaseClass) cls += ' predicted ' + phaseClass;
+        // Prioridade: período previsto > outras fases (é a informação mais
+        // relevante de assinalar; antes desta correção não havia NENHUMA
+        // marcação de período previsto no calendário).
+        if (isPredictedPeriodDay(dateStr)) {
+            cls += ' predicted phase-period-predicted';
+        } else {
+            const phaseClass = getPredictedPhaseClass(dateStr);
+            if (phaseClass) cls += ' predicted ' + phaseClass;
+        }
     }
     if (isSelected) cls += ' selected';
     if (isToday) cls += ' today';
@@ -561,9 +648,10 @@ function renderSidebar() {
     });
 
     const flowSection = document.getElementById('flowSection');
-    flowSection.hidden = !isPeriod || isFuture;
-    if (isPeriod) {
-        const level = getFlowLevel(dateStr);
+    const canEditFlow = (isPeriod || !!getExtendablePeriod(dateStr)) && !isFuture;
+    flowSection.hidden = !canEditFlow;
+    if (canEditFlow) {
+        const level = state.flow[dateStr]; // undefined num dia ainda por estender
         document.querySelectorAll('.flow-buttons .btn').forEach(btn => {
             btn.classList.toggle('active', parseInt(btn.dataset.level) === level);
         });
@@ -657,7 +745,12 @@ function updateSettingsStatus() {
     status.textContent = isAuto
         ? t('settingsAuto', { n: state.periods.length, avg })
         : t('settingsDefault');
-    status.style.background = isAuto ? '#e8f5e9' : '#fff3e0';
+    // BUG CORRIGIDO: cores fixas por inline style (verde/laranja claro) não
+    // se adaptavam ao modo escuro — o texto (var(--text), quase branco em
+    // modo escuro) ficava ilegível sobre esse fundo claro. Agora usa classes
+    // com par claro/escuro definido no CSS, tal como os alertas.
+    status.classList.remove('status-auto', 'status-default');
+    status.classList.add(isAuto ? 'status-auto' : 'status-default');
     if (state.settings.perimenopauseMode) status.textContent += t('settingsPerimenopause');
 }
 
@@ -762,9 +855,7 @@ function predominantFlow(period) {
 function generateReport() {
     const periods = getReportPeriods();
     const avgCycle = getAverageCycleLength();
-    const avgPeriod = state.periods.length
-        ? Math.round(state.periods.reduce((sum, p) => sum + (Math.round((parseDate(p.end) - parseDate(p.start)) / 86400000) + 1), 0) / state.periods.length)
-        : state.settings.periodLength;
+    const avgPeriod = getAveragePeriodLength();
     const conf = getCycleConfidence();
 
     let html = `
@@ -931,7 +1022,11 @@ function setupServiceWorker() {
     });
 
     navigator.serviceWorker.register('sw.js').then((reg) => {
-        if (reg.waiting) showUpdateBanner(reg);
+        // BUG CORRIGIDO: faltava exigir "navigator.serviceWorker.controller"
+        // aqui — sem essa condição, era possível o aviso de "nova versão"
+        // aparecer mesmo numa primeira instalação (quando ainda não existe
+        // nenhuma versão anterior a substituir).
+        if (reg.waiting && navigator.serviceWorker.controller) showUpdateBanner(reg);
         reg.addEventListener('updatefound', () => {
             const newWorker = reg.installing;
             newWorker.addEventListener('statechange', () => {
