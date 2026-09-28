@@ -128,7 +128,13 @@ body {
 }
 .app-title small { font-size: 0.7rem; font-weight: 400; color: var(--text-secondary); }
 
-.header-actions { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; }
+.header-actions { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; flex-shrink: 0; }
+/* Em ecrã estreito o nome/subtítulo deixava de caber ao lado do idioma e do
+   tema, empurrando-os para uma segunda linha — o subtítulo desaparece aqui,
+   mas continua a aparecer no relatório e no nome do ficheiro de backup. */
+@media (max-width: 420px) {
+    .app-title small { display: none; }
+}
 
 .content-grid {
     display: grid;
@@ -259,9 +265,20 @@ body {
     .day-emojis { max-width: 90%; }
 }
 
-/* ===== MINI-CALENDÁRIOS ===== */
-.mini-calendars { display: grid; grid-template-columns: 1fr; gap: 12px; }
-@media (min-width: 520px) { .mini-calendars { grid-template-columns: 1fr 1fr; } }
+/* ===== MINI-CALENDÁRIOS (retrátil, <details> nativo — sem JS) ===== */
+.mini-calendars {
+    background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: 16px; overflow: hidden;
+}
+.mini-calendars summary {
+    padding: 12px 16px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+}
+.mini-calendars summary::-webkit-details-marker { display: none; }
+.mini-calendars summary::after { content: '▾'; color: var(--text-secondary); }
+.mini-calendars[open] summary::after { content: '▴'; }
+.mini-calendars-grid { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 0 12px 12px; }
+@media (min-width: 520px) { .mini-calendars-grid { grid-template-columns: 1fr 1fr; } }
 .mini-calendar .mini-title { font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
 .mini-calendar .calendar-grid .day { font-size: 0.65rem; cursor: default; }
 .mini-calendar .calendar-grid .day:active { transform: none; }
@@ -314,8 +331,6 @@ body {
 .info-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
 .info-row .label { color: var(--text-secondary); }
 .info-row .value { font-weight: 600; text-align: right; }
-.value-with-info { display: flex; align-items: center; gap: 6px; justify-content: flex-end; }
-.btn-info-sm { width: 28px; height: 28px; font-size: 0.9rem; }
 
 /* ===== POPUPS / MODAIS ===== */
 .modal-overlay {
@@ -338,19 +353,47 @@ body {
 #onboardingNameInput { margin-top: 4px; }
 
 /* ===== RODAPÉ ===== */
+/* CORRIGIDO: cor secundária (baixo contraste) trocada por var(--text), que
+   acompanha o tema claro/escuro e garante contraste suficiente em ambos. */
 .app-footer {
-    text-align: center; color: var(--text-secondary);
-    font-size: 0.75rem; padding: 20px 0 10px; opacity: 0.6;
+    text-align: center; color: var(--text);
+    font-size: 0.78rem; font-weight: 500; padding: 20px 0 10px;
 }
 
 .selected-date-display { font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
 
-/* ===== SINTOMAS / FLUXO ===== */
-.symptom-group { margin-bottom: 14px; }
-.symptom-group .symptom-label { font-size: 0.85rem; font-weight: 600; margin-bottom: 6px; }
-.symptom-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
-.symptom-buttons .btn { flex: 1; min-width: 44px; }
+.phase-line {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--primary-light); color: var(--primary-dark);
+    padding: 8px 10px; border-radius: 8px; margin-bottom: 8px;
+    font-size: 0.9rem; font-weight: 600;
+}
+.info-btn {
+    flex-shrink: 0; width: 26px; height: 26px; border-radius: 50%;
+    border: 1px solid var(--primary-dark); background: var(--card-bg); color: var(--primary-dark);
+    font-size: 0.75rem; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.popup-confidence { font-size: 0.8rem; background: var(--bg); border-radius: 6px; padding: 6px 8px; margin-bottom: 10px; }
 
+/* ===== SINTOMAS / FLUXO ===== */
+/* Rótulo + botões na MESMA linha (poupa metade da altura face ao layout
+   empilhado anterior) — exceto o grupo das notas, que continua em bloco
+   porque um campo de texto livre não cabe ao lado do rótulo. */
+.symptom-group {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.symptom-group:last-of-type { border-bottom: none; }
+.symptom-group .symptom-label { font-size: 0.85rem; font-weight: 600; flex-shrink: 0; }
+.symptom-buttons { display: flex; gap: 5px; flex-wrap: nowrap; }
+.symptom-buttons .btn { flex: none; width: 38px; height: 38px; min-width: 38px; padding: 0; font-size: 1.05rem; border-radius: 8px; }
+
+.symptom-group.notes-group { display: block; }
+.symptom-group.notes-group .symptom-label { margin-bottom: 6px; }
+
+/* O fluxo mostra só os pontos (●/●●/●●●), com o rótulo completo em title
+   (tooltip/acessibilidade) — assim cabe na mesma linha compacta. */
+.flow-buttons .btn { width: auto; min-width: 34px; height: 34px; padding: 0 8px; font-size: 0.85rem; }
 .flow-buttons .btn.flow-opt-1.active { background: var(--flow-low); border-color: var(--flow-low); color: #4a0000; }
 .flow-buttons .btn.flow-opt-2.active { background: var(--flow-med); border-color: var(--flow-med); color: #fff; }
 .flow-buttons .btn.flow-opt-3.active { background: var(--flow-high); border-color: var(--flow-high); color: #fff; }
@@ -380,8 +423,25 @@ textarea { min-height: 70px; resize: vertical; }
 .settings-status { font-size: 0.78rem; padding: 8px 10px; border-radius: var(--radius-sm); margin-top: 4px; }
 
 .section-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; }
-.backup-actions { display: flex; flex-direction: column; gap: 8px; }
+.backup-row { display: flex; gap: 8px; }
+.backup-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px; border: 1px solid var(--border); border-radius: 8px;
+    background: var(--card-bg); color: var(--text); font-size: 0.7rem; font-family: inherit;
+    min-height: var(--touch-target); cursor: pointer; text-align: center;
+}
+.backup-btn .emoji { font-size: 1.1rem; }
+.backup-btn.danger { color: #c62828; border-color: #f3c0c0; }
+:root[data-theme="dark"] .backup-btn.danger { color: #ef9a9a; border-color: #7a2d2d; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .backup-btn.danger { color: #ef9a9a; border-color: #7a2d2d; } }
 .data-status { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; }
+
+/* Campos de definições calculados automaticamente ficam só de leitura,
+   com o valor real usado — evita a caixa mostrar um número que já não
+   tem qualquer efeito nas previsões. */
+input:disabled {
+    background: var(--border); color: var(--text-secondary); cursor: not-allowed; opacity: 1;
+}
 
 /* ===== SWIPE HINT (acessível apenas visualmente, decorativo) ===== */
 .calendar-card { position: relative; }

@@ -642,24 +642,26 @@ function renderSidebar() {
     document.getElementById('selectedDateDisplay').textContent = dateStr || '—';
 
     if (!dateStr) {
-        ['cycleDay', 'fertilityStatus', 'nextOvulation', 'nextPeriod', 'confidenceLevel'].forEach(id => document.getElementById(id).textContent = '—');
+        document.getElementById('phaseLineText').textContent = '—';
+        ['nextOvulation', 'nextPeriod'].forEach(id => document.getElementById(id).textContent = '—');
         document.getElementById('symptomDateInfo').textContent = t('noDateSelected');
         document.getElementById('flowSection').hidden = true;
         renderAppointmentSection(null);
         return;
     }
 
+    // Linha fundida "Dia X · Fase" — substitui as antigas linhas separadas
+    // de "Dia do ciclo" e "Fertilidade" (poupa uma linha inteira na caixa).
     const cycleDay = getCycleDay(dateStr);
-    document.getElementById('cycleDay').textContent = cycleDay ? t('nthDay', { n: cycleDay }) : t('noPeriodRegistered');
-
-    const isPeriod = isPeriodDay(dateStr);
-    document.getElementById('fertilityStatus').textContent = isPeriod ? t('periodStatusLabel') : getFertilityInfo(dateStr).label;
+    const phaseSuffix = PHASE_I18N_SUFFIX[getPhaseKey(dateStr)] || 'Unknown';
+    const phaseShort = t('phaseShort' + phaseSuffix);
+    document.getElementById('phaseLineText').textContent = cycleDay ? `${t('nthDay', { n: cycleDay })} · ${phaseShort}` : phaseShort;
 
     document.getElementById('nextOvulation').textContent = getNextOvulation(dateStr) || '—';
     document.getElementById('nextPeriod').textContent = getNextPeriodDisplay(dateStr) || '—';
-
-    const conf = getCycleConfidence();
-    document.getElementById('confidenceLevel').textContent = `${conf.emoji} ${conf.desc}`;
+    // "Confiança da previsão" já não aparece aqui — vive dentro do popup ℹ️
+    // (openPhasePopup), junto da explicação da fase.
+    const isPeriod = isPeriodDay(dateStr);
 
     const isFuture = isFutureDate(dateStr);
     const s = state.symptoms[dateStr] || {};
@@ -795,6 +797,29 @@ function updateSettingsStatus() {
     if (state.settings.perimenopauseMode) status.textContent += t('settingsPerimenopause');
 }
 
+// Os campos "Duração do ciclo" e "Duração do período" só têm efeito real
+// ANTES de haver dados suficientes (2+ períodos para o ciclo, 1+ para o
+// período) — a partir daí o motor de cálculo ignora-os sempre e usa a
+// média real. Antes disto, o valor na caixa podia ficar sem relação
+// nenhuma com o número mostrado na nota de rodapé, o que é confuso.
+// Agora ficam bloqueados (só leitura, com o valor real) assim que deixam
+// de ter efeito, e voltam a ficar editáveis se os dados forem apagados.
+function updateSettingsFieldsLock() {
+    const cycleInput = document.getElementById('cycleLengthInput');
+    const periodInput = document.getElementById('periodLengthInput');
+    const cycleLocked = state.periods.length >= 2;
+    const periodLocked = state.periods.length >= 1;
+
+    cycleInput.disabled = cycleLocked;
+    cycleInput.title = cycleLocked ? t('fieldAutoLocked') : '';
+    if (cycleLocked) cycleInput.value = getAverageCycleLength();
+
+    periodInput.disabled = periodLocked;
+    periodInput.title = periodLocked ? t('fieldAutoLocked') : '';
+    if (periodLocked) periodInput.value = getAveragePeriodLength();
+    // A fase lútea nunca é calculada automaticamente — fica sempre editável.
+}
+
 function render() {
     renderMainCalendar();
     renderMiniCalendars();
@@ -803,6 +828,7 @@ function render() {
     renderAppointmentBanner();
     updatePeriodToggleButton();
     updateSettingsStatus();
+    updateSettingsFieldsLock();
     saveState();
 }
 
@@ -816,17 +842,21 @@ function applyStaticTexts() {
     document.getElementById('nextMonthBtn').setAttribute('aria-label', t('nextMonth'));
     document.getElementById('periodActionsTitle').style.display = 'none';
 
-    document.getElementById('lblCycleDay').textContent = t('cycleDay');
-    document.getElementById('lblFertility').textContent = t('fertilityStatus');
     document.getElementById('lblNextOvulation').textContent = t('nextOvulation');
     document.getElementById('lblNextPeriod').textContent = t('nextPeriod');
-    document.getElementById('lblConfidence').textContent = t('confidence');
+
+    document.getElementById('miniCalSummary').textContent = t('miniCalendarsSummary');
 
     document.getElementById('appointmentsTitleText').textContent = t('appointmentsTitle');
     document.getElementById('lblFlow').textContent = t('flowTitle');
-    document.querySelector('.flow-opt-1').textContent = '● ' + t('flowLow');
-    document.querySelector('.flow-opt-2').textContent = '●● ' + t('flowMed');
-    document.querySelector('.flow-opt-3').textContent = '●●● ' + t('flowHigh');
+    // Só os pontos como texto do botão (cabe na linha compacta); o nome
+    // completo (Fraco/Médio/Abundante) fica em title/aria-label.
+    [['flow-opt-1', '●', 'flowLow'], ['flow-opt-2', '●●', 'flowMed'], ['flow-opt-3', '●●●', 'flowHigh']].forEach(([cls, dots, key]) => {
+        const btn = document.querySelector('.' + cls);
+        btn.textContent = dots;
+        btn.title = t(key);
+        btn.setAttribute('aria-label', t(key));
+    });
 
     document.getElementById('lblMood').textContent = t('mood');
     document.getElementById('lblPhysical').textContent = t('physical');
@@ -836,15 +866,15 @@ function applyStaticTexts() {
     document.getElementById('notesInput').placeholder = t('notesPlaceholder');
 
     document.getElementById('settingsTitleText').textContent = t('settingsTitle');
-    document.getElementById('lblCycleLength').textContent = t('cycleLengthLabel');
-    document.getElementById('lblPeriodLength').textContent = t('periodLengthLabel');
     document.getElementById('lblLutealPhase').textContent = t('lutealPhaseLabel');
     document.getElementById('lblPerimenopause').textContent = t('perimenopauseModeLabel');
+    // lblCycleLength / lblPeriodLength são geridos por syncSettingsLockState()
+    // (o texto muda consoante o campo está bloqueado ou não).
 
     document.getElementById('backupTitleText').textContent = t('backupTitle');
-    document.getElementById('exportBtn').textContent = t('exportData');
-    document.getElementById('importLabelText').textContent = t('importData');
-    document.getElementById('clearBtn').textContent = t('clearAllData');
+    document.getElementById('exportShortText').textContent = t('exportShort');
+    document.getElementById('importShortText').textContent = t('importShort');
+    document.getElementById('clearShortText').textContent = t('clearShort');
 
     document.getElementById('reportTitleText').textContent = t('reportTitle');
     document.getElementById('generateReportBtn').textContent = t('generateReport');

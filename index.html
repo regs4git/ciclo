@@ -44,16 +44,19 @@
         <div id="calendarGrid" class="calendar-grid"></div>
       </div>
 
-      <div class="mini-calendars no-print">
-        <div class="card mini-calendar">
-          <div id="miniTitle1" class="mini-title"></div>
-          <div id="miniGrid1" class="calendar-grid"></div>
+      <details class="mini-calendars no-print">
+        <summary id="miniCalSummary"></summary>
+        <div class="mini-calendars-grid">
+          <div class="mini-calendar">
+            <div id="miniTitle1" class="mini-title"></div>
+            <div id="miniGrid1" class="calendar-grid"></div>
+          </div>
+          <div class="mini-calendar">
+            <div id="miniTitle2" class="mini-title"></div>
+            <div id="miniGrid2" class="calendar-grid"></div>
+          </div>
         </div>
-        <div class="card mini-calendar">
-          <div id="miniTitle2" class="mini-title"></div>
-          <div id="miniGrid2" class="calendar-grid"></div>
-        </div>
-      </div>
+      </details>
 
       <div class="card no-print">
         <div class="section-title" id="periodActionsTitle"></div>
@@ -65,12 +68,13 @@
     <div>
       <div class="card">
         <div id="selectedDateDisplay" class="selected-date-display"></div>
+        <div class="phase-line">
+          <span id="phaseLineText"></span>
+          <button id="phaseInfoBtn" class="info-btn" type="button" aria-label="Info">ℹ️</button>
+        </div>
         <div class="info-list">
-          <div class="info-row"><span class="label" id="lblCycleDay"></span><span id="cycleDay" class="value"></span></div>
-          <div class="info-row"><span class="label" id="lblFertility"></span><span class="value-with-info"><span id="fertilityStatus" class="value"></span><button id="phaseInfoBtn" class="btn btn-icon btn-outline btn-info-sm" type="button" aria-label="Info">ℹ️</button></span></div>
           <div class="info-row"><span class="label" id="lblNextOvulation"></span><span id="nextOvulation" class="value"></span></div>
           <div class="info-row"><span class="label" id="lblNextPeriod"></span><span id="nextPeriod" class="value"></span></div>
-          <div class="info-row"><span class="label" id="lblConfidence"></span><span id="confidenceLevel" class="value"></span></div>
         </div>
       </div>
 
@@ -125,7 +129,7 @@
           </div>
         </div>
 
-        <div class="symptom-group">
+        <div class="symptom-group notes-group">
           <div class="symptom-label" id="lblNotes"></div>
           <textarea id="notesInput"></textarea>
         </div>
@@ -156,13 +160,12 @@
 
       <div class="card no-print">
         <div class="section-title" id="backupTitleText"></div>
-        <div class="backup-actions">
-          <button id="exportBtn" class="btn btn-outline" type="button"></button>
-          <label class="btn btn-outline" style="text-align:center;">
-            <span id="importLabelText"></span>
+        <div class="backup-row">
+          <button id="exportBtn" class="backup-btn" type="button"><span class="emoji">⬇️</span><span id="exportShortText"></span></button>
+          <label class="backup-btn" for="importFile"><span class="emoji">⬆️</span><span id="importShortText"></span>
             <input id="importFile" type="file" accept="application/json" style="display:none">
           </label>
-          <button id="clearBtn" class="btn btn-danger" type="button"></button>
+          <button id="clearBtn" class="backup-btn danger" type="button"><span class="emoji">🗑️</span><span id="clearShortText"></span></button>
         </div>
         <div id="dataStatus" class="data-status"></div>
       </div>
@@ -185,6 +188,7 @@
   <div class="modal-box">
     <button id="phasePopupClose" class="btn btn-icon btn-outline modal-close" type="button" aria-label="Fechar">✕</button>
     <h3 id="phasePopupTitle"></h3>
+    <div id="phasePopupConfidence" class="popup-confidence"></div>
     <p id="phasePopupText"></p>
     <p id="phasePopupFootnote" class="modal-footnote"></p>
     <p id="phasePopupPerimenopause" class="modal-footnote" hidden></p>
