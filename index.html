@@ -20,7 +20,9 @@
     </div>
     <div class="header-actions">
       <select id="langSelect" class="lang-select" aria-label="Idioma"></select>
-      <button id="themeToggleBtn" class="btn btn-icon btn-outline" type="button" title="Aparência">🌓</button>
+      <button id="themeToggleBtn" class="btn btn-icon" type="button" title="Aparência">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg>
+      </button>
     </div>
   </header>
 
@@ -33,12 +35,16 @@
       <div class="card calendar-card">
         <div class="calendar-nav">
           <div class="nav-buttons">
-            <button id="prevMonthBtn" class="btn btn-icon btn-outline" type="button" aria-label="Mês anterior">◀</button>
+            <button id="prevMonthBtn" class="btn btn-icon" type="button" aria-label="Mês anterior">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="15 18 9 12 15 6"/></svg>
+            </button>
             <button id="todayBtn" class="btn btn-outline btn-sm" type="button">Hoje</button>
           </div>
           <div id="monthLabel" class="month-label"></div>
           <div class="nav-buttons">
-            <button id="nextMonthBtn" class="btn btn-icon btn-outline" type="button" aria-label="Mês seguinte">▶</button>
+            <button id="nextMonthBtn" class="btn btn-icon" type="button" aria-label="Mês seguinte">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="9 6 15 12 9 18"/></svg>
+            </button>
           </div>
         </div>
         <div id="calendarGrid" class="calendar-grid"></div>
@@ -70,7 +76,9 @@
         <div id="selectedDateDisplay" class="selected-date-display"></div>
         <div class="phase-line">
           <span id="phaseLineText"></span>
-          <button id="phaseInfoBtn" class="info-btn" type="button" aria-label="Info">ℹ️</button>
+          <button id="phaseInfoBtn" class="info-btn" type="button" aria-label="Info">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><line x1="12" y1="11" x2="12" y2="16"/><circle cx="12" cy="7.5" r=".6" fill="currentColor" stroke="none"/></svg>
+          </button>
         </div>
         <div class="info-list">
           <div class="info-row"><span class="label" id="lblNextOvulation"></span><span id="nextOvulation" class="value"></span></div>
@@ -78,13 +86,17 @@
         </div>
       </div>
 
-      <div id="appointmentSection" class="card no-print">
-        <div class="section-title" id="appointmentsTitleText"></div>
-        <div id="appointmentCurrentWrap"></div>
-        <div id="appointmentTypesWrap" class="appointment-types"></div>
-      </div>
+      <details id="appointmentDetails" class="collapsible-card no-print">
+        <summary id="appointmentsTitleText"></summary>
+        <div id="appointmentPanelBody" class="collapsible-body">
+          <div id="appointmentCurrentWrap"></div>
+          <div id="appointmentTypesWrap" class="appointment-types"></div>
+        </div>
+      </details>
 
-      <div class="card symptoms-card no-print">
+      <details id="editorDetails" class="collapsible-card no-print">
+        <summary id="editorSummaryText"></summary>
+        <div id="editorPanelBody" class="collapsible-body">
         <div id="symptomDateInfo" class="section-title"></div>
 
         <div id="flowSection" class="symptom-group" hidden>
@@ -133,7 +145,8 @@
           <div class="symptom-label" id="lblNotes"></div>
           <textarea id="notesInput"></textarea>
         </div>
-      </div>
+        </div>
+      </details>
 
       <div class="card settings-card no-print">
         <div class="section-title" id="settingsTitleText"></div>
@@ -161,11 +174,19 @@
       <div class="card no-print">
         <div class="section-title" id="backupTitleText"></div>
         <div class="backup-row">
-          <button id="exportBtn" class="backup-btn" type="button"><span class="emoji">⬇️</span><span id="exportShortText"></span></button>
-          <label class="backup-btn" for="importFile"><span class="emoji">⬆️</span><span id="importShortText"></span>
+          <button id="exportBtn" class="backup-btn" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12"/><polyline points="7 11 12 16 17 11"/><line x1="4" y1="20" x2="20" y2="20"/></svg>
+            <span id="exportShortText"></span>
+          </button>
+          <label class="backup-btn" for="importFile">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21V9"/><polyline points="7 13 12 8 17 13"/><line x1="4" y1="4" x2="20" y2="4"/></svg>
+            <span id="importShortText"></span>
             <input id="importFile" type="file" accept="application/json" style="display:none">
           </label>
-          <button id="clearBtn" class="backup-btn danger" type="button"><span class="emoji">🗑️</span><span id="clearShortText"></span></button>
+          <button id="clearBtn" class="backup-btn danger" type="button">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polyline points="4 7 20 7"/><path d="M6 7V4h12v3M9 7v12M15 7v12M5 7l1 14h12l1-14"/></svg>
+            <span id="clearShortText"></span>
+          </button>
         </div>
         <div id="dataStatus" class="data-status"></div>
       </div>
@@ -205,6 +226,16 @@
       <button id="onboardingSaveBtn" class="btn btn-primary" type="button"></button>
     </div>
   </div>
+</div>
+
+<div id="quickPanel" class="quick-panel no-print" hidden>
+  <div class="quick-panel-header">
+    <strong id="quickPanelDate"></strong>
+    <button id="quickPanelClose" class="btn btn-icon" type="button" aria-label="Fechar">
+      <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><line x1="5" y1="5" x2="19" y2="19"/><line x1="19" y1="5" x2="5" y2="19"/></svg>
+    </button>
+  </div>
+  <div id="quickPanelBody"></div>
 </div>
 
 <div id="updateBanner" class="update-banner" hidden>

@@ -1,0 +1,538 @@
+/* ===== VARIÁVEIS E RESET ===== */
+/* Paleta tonal "Material You" derivada do rosa da app (semente #e91e63).
+   Mantemos os MESMOS nomes de variável que já existiam (para não ter de
+   reescrever cada regra do ficheiro), só atualizamos os valores para o
+   padrão de tons M3: primary / on-primary / primary-container /
+   on-primary-container / surface / surface-variant / outline. */
+:root {
+    --primary: #9c1850;        /* M3 primary (mais profundo que o rosa fonte, melhor contraste com texto branco) */
+    --primary-dark: #3e001d;   /* usado como "on-primary-container" — texto sobre --primary-light */
+    --primary-light: #ffd9e2;  /* M3 primary-container */
+    --secondary: #2196f3;
+    --secondary-dark: #1976d2;
+    --secondary-light: #bbdefb;
+    --success: #4caf50;
+    --warning: #ffc107;
+    --danger: #ba1a1a;
+
+    --bg: #fff8f8;              /* M3 surface */
+    --card-bg: #ffffff;         /* M3 surface-high */
+    --surface-variant: #f3dde3; /* M3 surface-variant — fundo de pílulas/ícones/chips */
+    --text: #201a1b;            /* M3 on-surface */
+    --text-secondary: #524347;  /* M3 on-surface-variant */
+    --border: #85737a30;        /* M3 outline, suavizado para separadores finos */
+    --shadow: 0 1px 3px rgba(32, 26, 27, 0.12);
+    --radius: 20px;             /* forma "large" do M3 — cartões */
+    --radius-sm: 12px;          /* forma "medium" — campos/pílulas pequenas */
+    --radius-full: 999px;       /* forma "full" — botões/chips */
+    --transition: 0.2s ease;
+    --font: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+
+    /* Cores do ciclo */
+    --color-period: #e53935;
+    --flow-low: #f4a49e;
+    --flow-med: #e5544a;
+    --flow-high: #b71c1c;
+    --color-fertility-moderate: #64b5f6;
+    --color-fertility-high: #1565c0;
+    --color-ovulation: #43a047;
+    --color-pms: #fdd835;
+
+    --touch-target: 44px;
+    --header-height: 56px;
+
+    color-scheme: light;
+}
+
+:root[data-theme="dark"] {
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --primary: #ffb1c8;         /* M3 inverte: primary fica claro/dessaturado em modo escuro */
+        --primary-dark: #ffd9e2;    /* "on-primary-container" claro sobre container escuro */
+        --primary-light: #7d1245;   /* M3 primary-container (escuro) */
+        --bg: #1c1416;
+        --card-bg: #271e20;
+        --surface-variant: #524347;
+        --text: #ece0e1;
+        --text-secondary: #d6c2c7;
+        --border: #9f8c9140;
+        --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+        --secondary-light: #17324a;
+        color-scheme: dark;
+    }
+}
+
+:root[data-theme="dark"] {
+    --primary: #ffb1c8;
+    --primary-dark: #ffd9e2;
+    --primary-light: #7d1245;
+    --bg: #1c1416;
+    --card-bg: #271e20;
+    --surface-variant: #524347;
+    --text: #ece0e1;
+    --text-secondary: #d6c2c7;
+    --border: #9f8c9140;
+    --shadow: 0 1px 3px rgba(0, 0, 0, 0.45);
+    --secondary-light: #17324a;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+/* CORRIGIDO: várias regras mais abaixo (.modal-overlay, .update-banner,
+   .appointment-banner) definem "display: flex" de forma incondicional.
+   Como uma regra do NOSSO stylesheet tem sempre prioridade sobre a regra
+   por omissão do browser para o atributo hidden ([hidden]{display:none}),
+   isso anulava o "hidden" — os popups/onboarding/avisos apareciam mas
+   nunca mais desapareciam, mesmo com hidden=true definido corretamente
+   pelo JavaScript. Esta regra única, com !important, garante que "hidden"
+   ganha sempre a qualquer outra regra de display, atual ou futura.  */
+[hidden] { display: none !important; }
+
+html {
+    font-size: clamp(14px, 3.6vw, 16px);
+    -webkit-tap-highlight-color: transparent;
+    scroll-padding-top: env(safe-area-inset-top, 0px);
+}
+
+body {
+    font-family: var(--font);
+    background: var(--bg);
+    color: var(--text);
+    line-height: 1.5;
+    min-height: 100%;
+    overflow-x: hidden;
+    padding-top: env(safe-area-inset-top, 0px);
+    padding-bottom: env(safe-area-inset-bottom, 0px);
+    transition: background var(--transition), color var(--transition);
+}
+
+/* ===== LAYOUT ===== */
+.app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 0 12px 80px;
+}
+
+.app-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 0;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 8px;
+    position: sticky;
+    top: env(safe-area-inset-top, 0px);
+    background: var(--bg);
+    z-index: 20;
+}
+
+.app-title {
+    font-size: clamp(1.1rem, 4vw, 1.3rem);
+    font-weight: 700;
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.app-title small { font-size: 0.7rem; font-weight: 400; color: var(--text-secondary); }
+
+.header-actions { display: flex; gap: 6px; flex-wrap: nowrap; align-items: center; flex-shrink: 0; }
+/* Em ecrã estreito o nome/subtítulo deixava de caber ao lado do idioma e do
+   tema, empurrando-os para uma segunda linha — o subtítulo desaparece aqui,
+   mas continua a aparecer no relatório e no nome do ficheiro de backup. */
+@media (max-width: 420px) {
+    .app-title small { display: none; }
+}
+
+.content-grid {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+@media (min-width: 860px) {
+    .content-grid { grid-template-columns: minmax(0, 1.4fr) minmax(280px, 1fr); align-items: start; }
+}
+
+/* ===== BOTÕES ===== */
+/* Material You: botões de texto em forma de "pílula" (shape "full"); os
+   ícones mantêm o círculo (definido mais abaixo em .btn-icon, que já vem
+   depois no ficheiro e por isso vence a cascata para esses casos). */
+.btn {
+    display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+    padding: 8px 18px; border-radius: var(--radius-full);
+    font-size: 0.875rem; font-weight: 600; cursor: pointer;
+    transition: background var(--transition), transform 0.1s;
+    min-height: var(--touch-target); min-width: var(--touch-target);
+    background: var(--card-bg); color: var(--text);
+    border: 1px solid var(--border);
+    text-decoration: none; font-family: inherit;
+}
+.btn:active { transform: scale(0.96); }
+.btn-primary { background: var(--primary); color: #fff; border-color: var(--primary); }
+.btn-primary:hover { background: var(--primary-dark); }
+.btn-primary:disabled { opacity: 0.5; cursor: not-allowed; transform: none; }
+.btn-secondary { background: var(--secondary); color: #fff; border-color: var(--secondary); }
+.btn-secondary:hover { background: var(--secondary-dark); }
+.btn-outline { background: transparent; border-color: var(--border); color: var(--text); }
+.btn-outline:hover { background: var(--surface-variant); }
+.btn-success { background: var(--success); color: #fff; border-color: var(--success); }
+.btn-danger { background: var(--danger); color: #fff; border-color: var(--danger); }
+.btn-sm { padding: 4px 12px; font-size: 0.75rem; min-height: 32px; }
+/* Botões de ícone: preenchimento tonal (surface-variant), sem contorno —
+   o padrão M3 para ações de navegação/utilidade (tema, ℹ️, setas...). */
+.btn-icon {
+    width: var(--touch-target); height: var(--touch-target); padding: 0;
+    border-radius: 50%; font-size: 1.2rem;
+    background: var(--surface-variant); border: none; color: var(--text-secondary);
+}
+.btn-icon:hover { background: var(--primary-light); color: var(--primary-dark); }
+.btn-icon.active { background: var(--primary-light); color: var(--primary-dark); }
+.btn[disabled] { opacity: 0.5; cursor: not-allowed; }
+.btn.active { outline: 2px solid var(--primary); outline-offset: -2px; }
+
+/* Seletor de idioma — pílula tonal, como no mockup */
+.lang-select {
+    display: inline-flex; align-items: center; gap: 4px;
+    padding: 0 14px; border-radius: var(--radius-full);
+    border: none; background: var(--surface-variant); color: var(--text);
+    font-size: 0.85rem; min-height: var(--touch-target); font-family: inherit; cursor: pointer;
+}
+
+/* ===== CARTÕES ===== */
+.card {
+    background: var(--card-bg);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    overflow: hidden;
+    margin-bottom: 16px;
+}
+
+/* ===== NAVEGAÇÃO DO CALENDÁRIO ===== */
+.calendar-nav {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 12px; flex-wrap: wrap; gap: 8px;
+}
+.calendar-nav .nav-buttons { display: flex; gap: 4px; align-items: center; }
+.calendar-nav .month-label {
+    font-size: clamp(1rem, 4vw, 1.2rem); font-weight: 600;
+    min-width: 120px; text-align: center;
+}
+
+/* ===== GRELHA DO CALENDÁRIO ===== */
+.calendar-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px;
+    user-select: none; touch-action: pan-y;
+}
+.calendar-grid .weekday {
+    text-align: center; font-size: 0.65rem; font-weight: 600;
+    color: var(--text-secondary); padding: 4px 0; letter-spacing: 0.5px;
+}
+.calendar-grid .day {
+    position: relative;
+    display: flex; flex-direction: column; align-items: center; justify-content: center;
+    aspect-ratio: 1 / 1; border-radius: var(--radius-sm);
+    font-size: clamp(0.7rem, 3vw, 0.85rem); cursor: pointer;
+    transition: background var(--transition), transform 0.1s;
+    overflow: hidden;
+}
+.calendar-grid .day:active { transform: scale(0.94); }
+.calendar-grid .day.empty { cursor: default; visibility: hidden; }
+.calendar-grid .day.selected { outline: 2px solid var(--primary); outline-offset: -2px; font-weight: 700; }
+.calendar-grid .day.today:not(.selected) { box-shadow: inset 0 0 0 1.5px var(--secondary); }
+
+/* Fases previstas: contorno tracejado + opacidade reduzida — NUNCA sólidas,
+   para nunca serem confundidas com um registo real. */
+.calendar-grid .day.predicted {
+    background: transparent;
+    border: 1.5px dashed var(--phase-color, var(--border));
+    opacity: 0.85;
+}
+.day.phase-fertility-moderate { --phase-color: var(--color-fertility-moderate); color: var(--color-fertility-moderate); }
+.day.phase-fertility-high { --phase-color: var(--color-fertility-high); color: var(--color-fertility-high); }
+.day.phase-ovulation { --phase-color: var(--color-ovulation); color: var(--color-ovulation); font-weight: 700; }
+.day.phase-pms { --phase-color: var(--color-pms); color: #7a6a00; }
+/* BUG CORRIGIDO: #7a6a00 (castanho escuro) sobre o fundo quase-preto do
+   modo escuro tinha contraste muito fraco. */
+:root[data-theme="dark"] .day.phase-pms { color: #ffe082; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .day.phase-pms { color: #ffe082; } }
+
+/* Dias de período PREVISTO (ainda não reais) — antes desta correção não
+   existia nenhuma marcação para isto no calendário futuro. */
+.day.phase-period-predicted { --phase-color: var(--color-period); color: var(--color-period); }
+
+/* Período real: preenchimento sólido, sem ambiguidade. Intensidade do fluxo
+   por tom de cor (em vez de emoji). */
+.day.flow-1 { background: var(--flow-low); color: #4a0000; }
+.day.flow-2 { background: var(--flow-med); color: #fff; }
+.day.flow-3 { background: var(--flow-high); color: #fff; }
+
+.day-emojis {
+    font-size: 0.6em; line-height: 1; margin-top: 1px;
+    display: flex; gap: 1px; max-width: 100%; overflow: hidden; white-space: nowrap;
+}
+.day-indicator {
+    position: absolute; bottom: 3px; left: 50%; transform: translateX(-50%);
+    width: 4px; height: 4px; border-radius: 50%; background: var(--secondary);
+}
+/* Ícone de consulta: canto fixo, nunca disputa espaço com os emoji de sintomas */
+.day-appointment-icon {
+    position: absolute; top: 1px; right: 1px; font-size: 0.65em; line-height: 1;
+}
+
+@media (max-width: 380px) {
+    .day-emojis { max-width: 90%; }
+}
+
+/* ===== MINI-CALENDÁRIOS (retrátil, <details> nativo — sem JS) ===== */
+.mini-calendars {
+    background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: 16px; overflow: hidden;
+}
+.mini-calendars summary {
+    padding: 12px 16px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+}
+.mini-calendars summary::-webkit-details-marker { display: none; }
+.mini-calendars summary::after { content: '▾'; color: var(--text-secondary); }
+.mini-calendars[open] summary::after { content: '▴'; }
+.mini-calendars-grid { display: grid; grid-template-columns: 1fr; gap: 12px; padding: 0 12px 12px; }
+@media (min-width: 520px) { .mini-calendars-grid { grid-template-columns: 1fr 1fr; } }
+.mini-calendar .mini-title { font-size: 0.8rem; font-weight: 600; margin-bottom: 6px; color: var(--text-secondary); }
+.mini-calendar .calendar-grid .day { font-size: 0.65rem; cursor: default; }
+.mini-calendar .calendar-grid .day:active { transform: none; }
+
+/* ===== CARTÕES RETRÁTEIS genéricos — "Consultas" e "Edição" também
+   passam a ser <details> colapsáveis, tal como os mini-calendários, agora
+   que a edição rápida por long-press (abaixo) é o caminho principal; isto
+   fica como alternativa sempre disponível, sem obrigar a scroll. ===== */
+.collapsible-card {
+    background: var(--card-bg); border-radius: var(--radius); box-shadow: var(--shadow);
+    margin-bottom: 16px; overflow: hidden;
+}
+.collapsible-card > summary {
+    padding: 14px 16px; font-weight: 600; font-size: 0.9rem; cursor: pointer;
+    list-style: none; display: flex; justify-content: space-between; align-items: center;
+}
+.collapsible-card > summary::-webkit-details-marker { display: none; }
+.collapsible-card > summary::after { content: '▾'; color: var(--text-secondary); }
+.collapsible-card[open] > summary::after { content: '▴'; }
+.collapsible-card > .collapsible-body { padding: 0 16px 16px; }
+
+/* ===== BALÃO DE EDIÇÃO RÁPIDA (long-press num dia do calendário) =====
+   Mostra, ancorado junto ao dia tocado, exatamente o mesmo conteúdo (os
+   MESMOS elementos reais, só deslocados no DOM — nunca duplicados) que
+   vive em "Edição" ou "Consultas" — por isso fica sempre sincronizado,
+   sem lógica nova de leitura/escrita de dados. */
+.quick-panel {
+    position: fixed; z-index: 65; width: min(300px, calc(100vw - 16px));
+    max-height: min(420px, calc(100vh - 16px)); overflow-y: auto;
+    background: var(--card-bg); border-radius: var(--radius); box-shadow: 0 8px 28px rgba(0,0,0,.3);
+}
+.quick-panel-header {
+    position: sticky; top: 0; display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 12px 14px; background: var(--primary-light); color: var(--primary-dark);
+    font-size: 0.9rem;
+}
+.quick-panel-header .btn-icon { width: 28px; height: 28px; background: rgba(255,255,255,.4); color: var(--primary-dark); }
+:root[data-theme="dark"] .quick-panel-header .btn-icon { background: rgba(0,0,0,.25); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .quick-panel-header .btn-icon { background: rgba(0,0,0,.25); } }
+#quickPanelBody { padding: 10px 14px 14px; }
+#quickPanelBody .collapsible-body { padding: 0; }
+
+/* ===== ALERTAS E BANNERS ===== */
+.alert {
+    padding: 10px 14px; border-radius: var(--radius-sm); font-size: 0.85rem;
+    margin-bottom: 8px; line-height: 1.4;
+}
+.alert-warning { background: #fff3e0; color: #7a4a00; }
+.alert-info { background: #e3f2fd; color: #0d47a1; }
+/* BUG CORRIGIDO: a regra anterior terminava uma lista de seletores com
+   vírgula e seguia-se logo de um @media — isso é CSS inválido (um seletor
+   não pode ser seguido de uma at-rule) e o browser descartava a regra
+   toda, incluindo o par claro/escuro do alerta de aviso, deixando-o
+   ilegível em modo escuro. Agora são regras separadas e válidas. */
+:root[data-theme="dark"] .alert-warning { background: #4a2f00; color: #ffcc80; }
+:root[data-theme="dark"] .alert-info { background: #0d2b45; color: #90caf9; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .alert-warning { background: #4a2f00; color: #ffcc80; }
+    :root:not([data-theme="light"]) .alert-info { background: #0d2b45; color: #90caf9; }
+}
+
+.settings-status.status-auto { background: #e8f5e9; color: #1b5e20; }
+.settings-status.status-default { background: #fff3e0; color: #7a4a00; }
+:root[data-theme="dark"] .settings-status.status-auto { background: #0f2e12; color: #a5d6a7; }
+:root[data-theme="dark"] .settings-status.status-default { background: #4a2f00; color: #ffcc80; }
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .settings-status.status-auto { background: #0f2e12; color: #a5d6a7; }
+    :root:not([data-theme="light"]) .settings-status.status-default { background: #4a2f00; color: #ffcc80; }
+}
+
+.appointment-banner {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    padding: 10px 14px; border-radius: var(--radius-sm); margin-bottom: 8px;
+    background: var(--primary-light); color: var(--primary-dark); cursor: pointer;
+    font-size: 0.85rem; border: none; width: 100%; text-align: left; font-family: inherit;
+}
+
+.update-banner {
+    position: fixed; left: 12px; right: 12px; bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    z-index: 50; background: var(--text); color: var(--bg);
+    padding: 12px 16px; border-radius: var(--radius); box-shadow: var(--shadow);
+    display: flex; align-items: center; justify-content: space-between; gap: 12px;
+    font-size: 0.85rem;
+}
+.update-banner .btn-primary { min-height: 36px; padding: 6px 14px; }
+/* ===== SIDEBAR: INFO ===== */
+.info-list { display: grid; gap: 8px; font-size: 0.9rem; margin-bottom: 12px; }
+.info-row { display: flex; justify-content: space-between; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--border); }
+.info-row .label { color: var(--text-secondary); }
+.info-row .value { font-weight: 600; text-align: right; }
+
+/* ===== POPUPS / MODAIS ===== */
+.modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.55);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 70; padding: 16px;
+}
+.modal-box {
+    background: var(--card-bg); color: var(--text);
+    border-radius: var(--radius); box-shadow: var(--shadow);
+    padding: 20px; max-width: 440px; width: 100%;
+    position: relative; max-height: 85vh; overflow-y: auto;
+}
+.modal-box h3 { margin-bottom: 10px; padding-right: 28px; }
+.modal-box p { margin-bottom: 10px; font-size: 0.9rem; line-height: 1.5; }
+.modal-footnote { color: var(--text-secondary); font-size: 0.8rem !important; }
+.modal-close { position: absolute; top: 10px; right: 10px; width: 32px; height: 32px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 12px; }
+.modal-actions .btn { flex: 1; }
+#onboardingNameInput { margin-top: 4px; }
+
+/* ===== RODAPÉ ===== */
+/* CORRIGIDO: cor secundária (baixo contraste) trocada por var(--text), que
+   acompanha o tema claro/escuro e garante contraste suficiente em ambos. */
+.app-footer {
+    text-align: center; color: var(--text);
+    font-size: 0.78rem; font-weight: 500; padding: 20px 0 10px;
+}
+
+.selected-date-display { font-weight: 700; font-size: 1rem; margin-bottom: 8px; }
+
+.phase-line {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--primary-light); color: var(--primary-dark);
+    padding: 10px 12px; border-radius: var(--radius-sm); margin-bottom: 8px;
+    font-size: 0.9rem; font-weight: 600;
+}
+.info-btn {
+    flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%;
+    border: none; background: rgba(255, 255, 255, 0.45); color: var(--primary-dark);
+    display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+:root[data-theme="dark"] .info-btn { background: rgba(0, 0, 0, 0.25); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .info-btn { background: rgba(0, 0, 0, 0.25); } }
+.info-btn svg { width: 16px; height: 16px; }
+.popup-confidence { font-size: 0.8rem; background: var(--surface-variant); border-radius: var(--radius-sm); padding: 8px 10px; margin-bottom: 10px; }
+
+/* ===== SINTOMAS / FLUXO ===== */
+/* Rótulo + botões na MESMA linha (poupa metade da altura face ao layout
+   empilhado anterior) — exceto o grupo das notas, que continua em bloco
+   porque um campo de texto livre não cabe ao lado do rótulo. */
+.symptom-group {
+    display: flex; align-items: center; justify-content: space-between;
+    gap: 8px; padding: 8px 0; border-bottom: 1px solid var(--border);
+}
+.symptom-group:last-of-type { border-bottom: none; }
+.symptom-group .symptom-label { font-size: 0.85rem; font-weight: 600; flex-shrink: 0; }
+.symptom-buttons { display: flex; gap: 5px; flex-wrap: nowrap; }
+.symptom-buttons .btn {
+    flex: none; width: 38px; height: 38px; min-width: 38px; padding: 0;
+    font-size: 1.05rem; border-radius: var(--radius-sm);
+    background: var(--surface-variant); border: none;
+}
+.symptom-buttons .btn.active { background: var(--primary-light); outline: 2px solid var(--primary); outline-offset: -2px; }
+
+.symptom-group.notes-group { display: block; }
+.symptom-group.notes-group .symptom-label { margin-bottom: 6px; }
+
+/* O fluxo mostra só os pontos (●/●●/●●●), com o rótulo completo em title
+   (tooltip/acessibilidade) — assim cabe na mesma linha compacta. */
+.flow-buttons .btn { width: auto; min-width: 34px; height: 34px; padding: 0 8px; font-size: 0.85rem; }
+.flow-buttons .btn.flow-opt-1.active { background: var(--flow-low); border-color: var(--flow-low); color: #4a0000; }
+.flow-buttons .btn.flow-opt-2.active { background: var(--flow-med); border-color: var(--flow-med); color: #fff; }
+.flow-buttons .btn.flow-opt-3.active { background: var(--flow-high); border-color: var(--flow-high); color: #fff; }
+
+textarea, input[type="number"], select {
+    font-family: inherit; font-size: 0.9rem; padding: 8px 10px;
+    border-radius: var(--radius-sm); border: none;
+    background: var(--surface-variant); color: var(--text); width: 100%;
+}
+textarea { min-height: 70px; resize: vertical; }
+
+/* ===== CONSULTAS ===== */
+.appointment-types { display: flex; flex-wrap: wrap; gap: 6px; margin: 8px 0; }
+.appointment-types .btn { flex: 1 1 30%; min-width: 90px; }
+.appointment-current {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    background: var(--primary-light); color: var(--primary-dark);
+    padding: 8px 12px; border-radius: var(--radius-sm); margin: 8px 0; font-size: 0.85rem;
+}
+
+/* ===== DEFINIÇÕES ===== */
+.settings-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field label { font-size: 0.78rem; color: var(--text-secondary); }
+.checkbox-field { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; margin: 8px 0; }
+.checkbox-field input { width: 20px; height: 20px; }
+.settings-status { font-size: 0.78rem; padding: 8px 10px; border-radius: var(--radius-sm); margin-top: 4px; }
+
+.section-title { font-size: 0.95rem; font-weight: 700; margin-bottom: 10px; }
+.backup-row { display: flex; gap: 8px; }
+.backup-btn {
+    flex: 1; display: flex; flex-direction: column; align-items: center; gap: 4px;
+    padding: 10px 4px; border: none; border-radius: var(--radius-sm);
+    background: var(--surface-variant); color: var(--text); font-size: 0.7rem; font-family: inherit;
+    min-height: var(--touch-target); cursor: pointer; text-align: center;
+}
+.backup-btn .emoji { font-size: 1.1rem; }
+.backup-btn svg { width: 20px; height: 20px; }
+.backup-btn.danger { color: #ba1a1a; background: #ffdad6; }
+:root[data-theme="dark"] .backup-btn.danger { color: #ffb4a8; background: #4a0c00; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .backup-btn.danger { color: #ffb4a8; background: #4a0c00; } }
+.data-status { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; }
+
+/* Campos de definições calculados automaticamente ficam só de leitura,
+   com o valor real usado — evita a caixa mostrar um número que já não
+   tem qualquer efeito nas previsões. */
+input:disabled {
+    background: var(--border); color: var(--text-secondary); cursor: not-allowed; opacity: 1;
+}
+
+/* ===== SWIPE HINT (acessível apenas visualmente, decorativo) ===== */
+.calendar-card { position: relative; }
+
+/* ===== RELATÓRIO IMPRIMÍVEL ===== */
+.report-only { display: none; }
+
+@media print {
+    .app-header, .header-actions, .calendar-card .calendar-nav, .mini-calendars,
+    .symptom-group, .appointment-types, .backup-actions, .update-banner,
+    .card.settings-card, .collapsible-card, #reportBtnWrap, .appointment-banner,
+    .quick-panel, .no-print { display: none !important; }
+    .report-only { display: block !important; }
+    body { background: #fff; color: #000; }
+    .card { box-shadow: none; border: 1px solid #ccc; }
+    .app { padding: 0; max-width: 100%; }
+}
+
+/* ===== RESPONSIVO GERAL ===== */
+@media (max-width: 480px) {
+    .settings-grid { grid-template-columns: 1fr; }
+    .app { padding: 0 8px 80px; }
+}
