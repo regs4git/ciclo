@@ -226,8 +226,26 @@ function getNextPeriodDisplay(fromDate) {
     return exact;
 }
 
+// Ovulação do ciclo (real ou projetado) EM QUE O DIA SE ENCONTRA — pode ser
+// anterior ao dia. Ao contrário de getNextOvulation (que devolve sempre uma
+// data >= ao dia e serve para o campo "próxima ovulação"), esta é a base
+// correta para classificar a fase: com a "próxima" ovulação o desvio era
+// sempre <= 0 e a fase lútea nunca chegava a ser atribuída (v9).
+function getCycleOvulationFor(dateStr) {
+    const cycleLen = getAverageCycleLength();
+    const luteal = state.settings.lutealPhase;
+    const sorted = [...state.periods].sort((a, b) => a.start.localeCompare(b.start));
+    let lastPeriod = null;
+    for (const p of sorted) if (p.start <= dateStr) lastPeriod = p;
+    if (!lastPeriod) return null;
+    const day = parseDate(dateStr);
+    let cycleStart = parseDate(lastPeriod.start);
+    while (addDays(cycleStart, cycleLen) <= day) cycleStart = addDays(cycleStart, cycleLen);
+    return formatDate(addDays(cycleStart, cycleLen - luteal));
+}
+
 function getFertilityInfo(dateStr) {
-    const ovDate = getNextOvulation(dateStr);
+    const ovDate = getCycleOvulationFor(dateStr);
     if (!ovDate) return { phase: 'unknown', label: t('noData') };
     const ov = parseDate(ovDate);
     const current = parseDate(dateStr);
@@ -820,10 +838,12 @@ function updateSettingsFieldsLock() {
     cycleInput.disabled = cycleLocked;
     cycleInput.title = cycleLocked ? t('fieldAutoLocked') : '';
     if (cycleLocked) cycleInput.value = getAverageCycleLength();
+    document.getElementById('lblCycleLength').textContent = t('cycleLengthLabel') + (cycleLocked ? ' 🔒' : '');
 
     periodInput.disabled = periodLocked;
     periodInput.title = periodLocked ? t('fieldAutoLocked') : '';
     if (periodLocked) periodInput.value = getAveragePeriodLength();
+    document.getElementById('lblPeriodLength').textContent = t('periodLengthLabel') + (periodLocked ? ' 🔒' : '');
     // A fase lútea nunca é calculada automaticamente — fica sempre editável.
 }
 
@@ -878,8 +898,11 @@ function applyStaticTexts() {
     document.getElementById('settingsTitleText').textContent = t('settingsTitle');
     document.getElementById('lblLutealPhase').textContent = t('lutealPhaseLabel');
     document.getElementById('lblPerimenopause').textContent = t('perimenopauseModeLabel');
-    // lblCycleLength / lblPeriodLength são geridos por syncSettingsLockState()
-    // (o texto muda consoante o campo está bloqueado ou não).
+    // Rótulos base dos campos de duração; updateSettingsFieldsLock() acrescenta
+    // 🔒 quando o campo está bloqueado (calculado automaticamente). Antes, um
+    // comentário remetia para uma função inexistente e estes rótulos ficavam vazios.
+    document.getElementById('lblCycleLength').textContent = t('cycleLengthLabel');
+    document.getElementById('lblPeriodLength').textContent = t('periodLengthLabel');
 
     document.getElementById('backupTitleText').textContent = t('backupTitle');
     document.getElementById('exportShortText').textContent = t('exportShort');
@@ -1226,7 +1249,9 @@ function setupEvents() {
 // mesmo motor de cálculo que já colore o calendário, por isso está sempre
 // coerente com o que se vê nos dias reais/previstos.
 function getPhaseKey(dateStr) {
-    if (isPeriodDay(dateStr)) return 'menstrual';
+    // Um dia que o calendário desenha como período PREVISTO também é fase
+    // menstrual (antes aparecia como "folicular", em contradição com a cor).
+    if (isPeriodDay(dateStr) || isPredictedPeriodDay(dateStr)) return 'menstrual';
     const fi = getFertilityInfo(dateStr);
     return fi.phase; // 'follicular' | 'fertility-moderate' | 'fertility-high' | 'ovulation' | 'luteal' | 'pms' | 'unknown'
 }
@@ -1241,6 +1266,10 @@ function openPhasePopup() {
     const suffix = PHASE_I18N_SUFFIX[getPhaseKey(dateStr)] || 'Unknown';
     document.getElementById('phasePopupTitle').textContent = t('phaseTitle' + suffix);
     document.getElementById('phasePopupText').textContent = t('phaseText' + suffix);
+    // A confiança da previsão vive aqui desde que saiu do cartão "Dia"; este
+    // elemento existia mas nunca era preenchido (ficava uma caixa vazia).
+    const conf = getCycleConfidence();
+    document.getElementById('phasePopupConfidence').textContent = `${t('confidence')}: ${conf.emoji} ${conf.desc}`;
     document.getElementById('phasePopupFootnote').textContent = t('footnoteGeneral');
     const perimenopauseP = document.getElementById('phasePopupPerimenopause');
     if (state.settings.perimenopauseMode) {
